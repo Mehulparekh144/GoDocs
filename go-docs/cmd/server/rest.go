@@ -5,8 +5,10 @@ import (
 	"go-docs/cmd/server/middleware"
 	"go-docs/cmd/server/validator"
 	"go-docs/cmd/services"
+	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -19,11 +21,21 @@ func StartRestServer(db *gorm.DB, redis *redis.Client) *chi.Mux {
 	userHandler := handler.NewUserHandler(userService, validator)
 	documentHandler := handler.NewDocumentHandler(documentService, validator)
 
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{os.Getenv("CLIENT_URL")},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"*"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", userHandler.RegisterUser)
 			r.Post("/login", userHandler.LoginUser)
 			r.Post("/refresh-token", userHandler.RefreshToken)
+			r.Post("/logout", userHandler.LogoutUser)
 		})
 		r.Route("/user", func(r chi.Router) {
 			r.Use(middleware.AuthMiddleware)

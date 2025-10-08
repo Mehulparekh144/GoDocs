@@ -4,7 +4,6 @@ import (
 	"context"
 	"go-docs/cmd/utils"
 	"net/http"
-	"strings"
 )
 
 // A custom type for context keys, because strings are not unique and can cause conflicts
@@ -14,13 +13,19 @@ const userIDKey = contextKey("user_id")
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get("Authorization")
-		if strings.Trim(header, " ") == "" {
+
+		cookie, err := r.Cookie("accessToken")
+		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		token := strings.Split(header, " ")[1]
+		if cookie.Value == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		token := cookie.Value
 		if token == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

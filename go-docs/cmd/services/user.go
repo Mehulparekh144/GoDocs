@@ -38,8 +38,9 @@ func (s *UserService) GetUser(userID string) (*models.User, error) {
 	return user, nil
 }
 
-func (s *UserService) RegisterUser(email, password string) error {
+func (s *UserService) RegisterUser(name, email, password string) error {
 	user := &models.User{
+		Name:     name,
 		Email:    email,
 		Password: passwordHash(password),
 	}

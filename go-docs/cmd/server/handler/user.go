@@ -9,6 +9,7 @@ import (
 	"go-docs/cmd/utils"
 	"log"
 	"net/http"
+	"time"
 )
 
 type UserHandler struct {
@@ -36,6 +37,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(&dto.GetUserResponse{
 		ID:    user.ID,
+		Name:  user.Name,
 		Email: user.Email,
 	})
 }
@@ -52,7 +54,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.userService.RegisterUser(user.Email, user.Password); err != nil {
+	if err := h.userService.RegisterUser(user.Name, user.Email, user.Password); err != nil {
 		utils.GetErrorResponse("Internal server error", err.Error(), w, http.StatusInternalServerError)
 		return
 	}
@@ -87,18 +89,26 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		Name:     "refreshToken",
 		Value:    refreshToken,
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   true,
+		Path:     "/",
 		SameSite: http.SameSiteNoneMode,
-		MaxAge:   60 * 60 * 24 * 30,
+		MaxAge:   int(time.Hour * 24),
 	})
 
-	response := dto.LoginUserResponse{
-		Message:     "Login successful",
-		AccessToken: accessToken,
-	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "accessToken",
+		Value:    accessToken,
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteNoneMode,
+		MaxAge:   int(time.Minute * 15),
+	})
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(&dto.LoginUserResponse{
+		Message: "Login successful",
+	})
 }
 
 func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
@@ -124,10 +134,56 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(&dto.RefreshTokenResponse{
-		Message:     "Token refreshed successfully",
-		AccessToken: accessToken,
+	http.SetCookie(w, &http.Cookie{
+		Name:     "accessToken",
+		Value:    accessToken,
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteNoneMode,
+		MaxAge:   int(time.Minute * 15),
 	})
 
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(&dto.RefreshTokenResponse{
+		Message: "Token refreshed successfully",
+	})
+
+}
+
+func (h *UserHandler) LogoutUser(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("refreshToken")
+	if err != nil {
+		utils.GetErrorResponse("Unauthorized", err.Error(), w, http.StatusUnauthorized)
+		return
+	}
+
+	if cookie.Value == "" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	newCookie := http.Cookie{
+		Name:     "refreshToken",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+		MaxAge:   -1,
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "accessToken",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteNoneMode,
+		MaxAge:   -1,
+	})
+
+	http.SetCookie(w, &newCookie)
+
+	w.WriteHeader(http.StatusOK)
 }
