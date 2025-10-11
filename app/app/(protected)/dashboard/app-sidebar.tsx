@@ -60,34 +60,52 @@ export const AppSidebar = ({ user }: { user: User }) => {
   });
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4">
-        <h1 className="text-2xl font-bold">
-          Go<span className="text-primary">Docs</span>
-        </h1>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
+    <>
+      {!pathname?.startsWith("/dashboard/document/") ? (
+        <Sidebar variant="floating">
+          <SidebarHeader className="p-4">
+            <h1 className="text-2xl font-bold">
+              Go<span className="text-primary">Docs</span>
+            </h1>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Menu</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === item.href}
+                      >
+                        <Link
+                          href={item.href}
+                          className="flex items-center gap-2"
+                        >
+                          <item.icon className="h-4 w-4" /> {item.label}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href}>
-                    <Link href={item.href} className="flex items-center gap-2">
-                      <item.icon className="h-4 w-4" /> {item.label}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <UserInfo
+                  auth={user}
+                  isLoading={isPending}
+                  onLogout={() => mutate()}
+                />
+              </SidebarMenuItem>
             </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter>
-        <UserInfo auth={user} isLoading={isPending} onLogout={() => mutate()} />
-      </SidebarFooter>
-    </Sidebar>
+          </SidebarFooter>
+        </Sidebar>
+      ) : null}
+    </>
   );
 };
 
@@ -106,8 +124,8 @@ const UserInfo = ({
         {isLoading ? (
           <Skeleton className="h-10 w-full rounded-md" />
         ) : (
-          <div className="bg-card flex w-full items-center justify-start rounded-md border px-4 py-1.5">
-            <div className="bg-secondary mr-2 rounded-md p-1">
+          <div className="bg-card flex w-full items-center justify-start gap-2 rounded-md border px-4 py-1.5">
+            <div className="bg-secondary ring-border mr-2 rounded-md p-1 ring-1">
               <UserIcon className="h-4 w-4" />
             </div>
             <div className="flex flex-col items-start">
@@ -119,8 +137,8 @@ const UserInfo = ({
           </div>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem onClick={onLogout}>
+      <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
+        <DropdownMenuItem className="cursor-pointer" onClick={onLogout}>
           <LogOutIcon className="h-4 w-4" />
           Logout
         </DropdownMenuItem>

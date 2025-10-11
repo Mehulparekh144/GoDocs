@@ -21,6 +21,10 @@ export const useAuth = () => {
   } = useQuery({
     queryKey: ["user"],
     queryFn: getUser,
+    staleTime: 1000 * 60 * 5, // 5 minutes, avoids refetching often
+    gcTime: 1000 * 60 * 10, // keeps it in cache even longer
+    refetchOnWindowFocus: false, // no refetch when switching tabs
+    refetchOnMount: false, // won't refetch every time component mounts
   });
 
   return { user, isLoading, error, refetch };

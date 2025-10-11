@@ -1,25 +1,29 @@
+"use client";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
-import { getUser } from "@/app/actions";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ScreenLoader } from "@/components/screen-loader";
+import { useAuth } from "@/hooks/use-auth";
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getUser();
+  const { user, isLoading, error } = useAuth();
 
-  if (!user) {
-    redirect("/get-started");
+  if (isLoading) {
+    return <ScreenLoader />;
+  }
+
+  if (error) {
+    window.location.href = "/get-started";
   }
 
   return (
     <SidebarProvider>
       <Suspense fallback={<ScreenLoader />}>
-        <AppSidebar user={user} />
+        <AppSidebar user={user!} />
       </Suspense>
       <main className="h-screen w-full">{children}</main>
     </SidebarProvider>

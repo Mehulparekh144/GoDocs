@@ -7,9 +7,7 @@ import (
 	"go-docs/cmd/server/validator"
 	"go-docs/cmd/services"
 	"go-docs/cmd/utils"
-	"log"
 	"net/http"
-	"time"
 )
 
 type UserHandler struct {
@@ -92,7 +90,7 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		Path:     "/",
 		SameSite: http.SameSiteNoneMode,
-		MaxAge:   int(time.Hour * 24),
+		MaxAge:   60 * 60 * 24, // 24 hours
 	})
 
 	http.SetCookie(w, &http.Cookie{
@@ -102,7 +100,7 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		Path:     "/",
 		SameSite: http.SameSiteNoneMode,
-		MaxAge:   int(time.Minute * 15),
+		MaxAge:   60 * 15, // 15 minutes
 	})
 
 	w.WriteHeader(http.StatusOK)
@@ -119,8 +117,6 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Refresh Token: ", cookie.Value)
-
 	if cookie.Value == "" {
 		utils.GetErrorResponse("Unauthorized", "Unauthorized", w, http.StatusUnauthorized)
 		return
@@ -128,11 +124,21 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	refreshToken := cookie.Value
 
-	accessToken, err := services.RefreshToken(refreshToken)
+	accessToken, refreshToken, err := services.RefreshToken(refreshToken)
 	if err != nil {
 		utils.GetErrorResponse("Internal Server Error", err.Error(), w, http.StatusInternalServerError)
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refreshToken",
+		Value:    refreshToken,
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteNoneMode,
+		MaxAge:   60 * 60 * 24, // 24 hours
+	})
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "accessToken",
@@ -141,7 +147,7 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		Path:     "/",
 		SameSite: http.SameSiteNoneMode,
-		MaxAge:   int(time.Minute * 15),
+		MaxAge:   60 * 15, // 15 minutes
 	})
 
 	w.WriteHeader(http.StatusOK)
@@ -163,16 +169,6 @@ func (h *UserHandler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newCookie := http.Cookie{
-		Name:     "refreshToken",
-		Value:    "",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
-		Path:     "/",
-		MaxAge:   -1,
-	}
-
 	http.SetCookie(w, &http.Cookie{
 		Name:     "accessToken",
 		Value:    "",
@@ -183,7 +179,15 @@ func (h *UserHandler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 
-	http.SetCookie(w, &newCookie)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refreshToken",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteNoneMode,
+		MaxAge:   -1,
+	})
 
 	w.WriteHeader(http.StatusOK)
 }

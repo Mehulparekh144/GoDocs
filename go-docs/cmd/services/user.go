@@ -106,11 +106,21 @@ func passwordHash(password string) string {
 	return string(hash)
 }
 
-func RefreshToken(refreshToken string) (string, error) {
+func RefreshToken(refreshToken string) (string, string, error) {
 	userID, err := utils.ValidateToken(refreshToken)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return generateToken(userID, time.Minute*15)
+	accessToken, err := generateToken(userID, time.Minute*15)
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshToken, err = generateToken(userID, time.Hour*24)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
 }
