@@ -20,6 +20,7 @@ func StartRestServer(db *gorm.DB, redis *redis.Client) *chi.Mux {
 	userService := services.NewUserService(db)
 	userHandler := handler.NewUserHandler(userService, validator)
 	documentHandler := handler.NewDocumentHandler(documentService, validator)
+	socketHandler := handler.NewSocketHandler()
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{os.Getenv("CLIENT_URL")},
@@ -53,6 +54,7 @@ func StartRestServer(db *gorm.DB, redis *redis.Client) *chi.Mux {
 				r.Delete("/{documentID}", documentHandler.RemoveCollaborator)
 			})
 		})
+		r.Get("/test-ws", socketHandler.ServeTestWS)
 	})
 
 	return r
