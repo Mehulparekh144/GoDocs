@@ -12,11 +12,12 @@ import (
 )
 
 type UserService struct {
-	db *gorm.DB
+	db             *gorm.DB
+	userSearchTrie *UserSearchService
 }
 
-func NewUserService(db *gorm.DB) *UserService {
-	return &UserService{db: db}
+func NewUserService(db *gorm.DB, userSearchTrie *UserSearchService) *UserService {
+	return &UserService{db: db, userSearchTrie: userSearchTrie}
 }
 
 func generateToken(userID string, expiresIn time.Duration) (string, error) {
@@ -123,4 +124,32 @@ func RefreshToken(refreshToken string) (string, string, error) {
 	}
 
 	return accessToken, refreshToken, nil
+}
+
+func (s *UserService) GetAllUsers() ([]models.User, error) {
+	users := []models.User{}
+
+	result := s.db.Find(&users)
+
+	return users, result.Error
+}
+
+func (s *UserService) SearchUserForDocument(query string, limit int, documentID string) ([]models.User, error) {
+	users := []models.User{}
+
+	document := &models.Document{}
+	s.db.Where("id = ?", documentID).First(document)
+
+	collaborators := []models.DocumentCollaborator{}
+	s.db.Where("document_id = ?", documentID).Find(&collaborators)
+
+	userIDs := s.userSearchTrie.SearchUsers(query, limit)
+
+	for _, userID := range userIDs {
+		user := &models.User{}
+		s.db.Where("id = ?", userID).First(user)
+		users = append(users, *user)
+	}
+
+	return users, nil
 }

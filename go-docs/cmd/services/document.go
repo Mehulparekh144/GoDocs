@@ -8,6 +8,7 @@ import (
 	"go-docs/cmd/server/dto"
 	"go-docs/cmd/utils"
 	"log"
+	"slices"
 	"sync"
 	"time"
 
@@ -20,13 +21,14 @@ type DocumentService struct {
 	db             *gorm.DB
 	redis          *redis.Client
 	operationCache sync.Map
+	userSearchTrie *UserSearchService
 }
 
-func NewDocumentService(db *gorm.DB, redis *redis.Client) *DocumentService {
-	return &DocumentService{db: db, redis: redis, operationCache: sync.Map{}}
+func NewDocumentService(db *gorm.DB, redis *redis.Client, userSearchTrie *UserSearchService) *DocumentService {
+	return &DocumentService{db: db, redis: redis, operationCache: sync.Map{}, userSearchTrie: userSearchTrie}
 }
 
-func (s *DocumentService) CreateDocument(title, content, documentID, authorID string) error {
+func (s *DocumentService) CreateDocument(title, content, documentID, authorID string) (string, error) {
 	parsedAuthorID := uuid.MustParse(authorID)
 	newDocument := &models.Document{
 		Title:    title,
@@ -35,11 +37,35 @@ func (s *DocumentService) CreateDocument(title, content, documentID, authorID st
 	}
 
 	if documentID == "" {
-		return s.db.Create(newDocument).Error
-
+		err := s.db.Create(newDocument).Error
+		if err != nil {
+			return "", err
+		}
+		return newDocument.ID.String(), nil
 	}
 
-	return s.db.Model(&models.Document{}).Where("id = ?", documentID).Updates(&newDocument).Error
+	result := s.db.Model(&models.Document{}).Where("id = ?", documentID).Updates(
+		newDocument,
+	)
+	if result.Error != nil {
+		return "", result.Error
+	}
+
+	newDocument = &models.Document{}
+	result = s.db.Where("id = ?", documentID).First(newDocument)
+	if result.Error != nil {
+		return "", result.Error
+	}
+
+	s.operationCache.Store(documentID, &models.OperationCache{
+		ActiveDocument: newDocument,
+		Operations:     []models.DocumentOperation{},
+		LastUsed:       time.Now(),
+		Dirty:          false,
+	})
+	s.saveDocumentToRedis(newDocument)
+
+	return documentID, nil
 }
 
 func (s *DocumentService) GetDocuments(authorID string) ([]models.Document, error) {
@@ -59,8 +85,7 @@ func (s *DocumentService) GetDocument(userId string, documentID string) (*models
 
 	cache, err := s.getActiveDocument(documentID)
 	if err != nil {
-		document = cache.ActiveDocument
-		return document, nil
+		return nil, err
 	}
 
 	document = cache.ActiveDocument
@@ -70,10 +95,9 @@ func (s *DocumentService) GetDocument(userId string, documentID string) (*models
 
 	colabResults := s.db.Where("document_id = ? AND user_id = ?", documentID, userId).First(colab)
 
-	if colabResults.Error != nil {
+	if colabResults.Error != nil && !errors.Is(colabResults.Error, gorm.ErrRecordNotFound) {
 		return nil, colabResults.Error
 	}
-
 	return document, nil
 
 }
@@ -237,15 +261,16 @@ func (s *DocumentService) getActiveDocument(documentID string) (*models.Operatio
 	result, err := s.redis.Get(context.Background(), documentID).Result()
 
 	if err == redis.Nil {
-		dbResult := s.db.Where("id = ?", documentID).First(document)
+		dbResult := s.db.Where("id = ?", documentID).Select("id, title, content, author_id, version, created_at, updated_at").First(document)
 		if dbResult.Error != nil {
 			return nil, dbResult.Error
 		}
-		json, err := json.Marshal(document)
+
+		data, err := json.Marshal(document)
 		if err != nil {
 			return nil, err
 		}
-		s.redis.Set(context.Background(), documentID, json, 0)
+		s.redis.Set(context.Background(), documentID, data, 0)
 	} else if err != nil {
 		return nil, err
 	}
@@ -321,4 +346,36 @@ func (s *DocumentService) SaveDocumentsToDB() {
 		return true
 	})
 
+}
+
+func (s *DocumentService) SearchUserForDocument(query string, limit int, documentID string, userID string) ([]models.User, error) {
+	users := []models.User{}
+
+	parsedUserID := uuid.MustParse(userID)
+
+	document := &models.Document{}
+	s.db.Where("id = ?", documentID).First(document)
+
+	if document.AuthorID != parsedUserID {
+		return users, errors.New("you are not authorized to search users for this document")
+	}
+
+	collaborators := []uuid.UUID{}
+	s.db.Where("document_id = ?", documentID).Pluck("user_id", &collaborators)
+	collaborators = append(collaborators, document.AuthorID, parsedUserID)
+
+	userIDs := s.userSearchTrie.SearchUsers(query, limit)
+
+	for _, userID := range userIDs {
+
+		if slices.Contains(collaborators, userID) {
+			continue
+		}
+
+		user := &models.User{}
+		s.db.Where("id = ?", userID).First(user)
+		users = append(users, *user)
+	}
+
+	return users, nil
 }

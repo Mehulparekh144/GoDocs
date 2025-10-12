@@ -2,12 +2,12 @@ export type Document = {
   id: string;
   title: string;
   content: string;
-  authorID: string;
+  author_id: string;
   author: User;
   version: number;
   collaborators: Collaborator[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type User = {
@@ -23,3 +23,13 @@ export type Collaborator = {
 };
 
 export type AccessLevel = "read" | "write";
+
+export type CreateDocumentResponse = {
+  id: string;
+  message: string;
+};
+
+export type CreateDocumentRequest = {
+  title: string;
+  content: string;
+};

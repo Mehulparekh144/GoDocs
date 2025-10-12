@@ -7,7 +7,9 @@ import (
 	"go-docs/cmd/server/validator"
 	"go-docs/cmd/services"
 	"go-docs/cmd/utils"
+	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -41,12 +43,15 @@ func (h *DocumentHandler) CreateDocument(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.documentService.CreateDocument(document.Title, document.Content, documentID, userID); err != nil {
+	documentID, err := h.documentService.CreateDocument(document.Title, document.Content, documentID, userID)
+
+	if err != nil {
 		utils.GetErrorResponse("Internal Server Error", err.Error(), w, http.StatusInternalServerError)
 		return
 	}
 
 	response := dto.CreateDocumentResponse{
+		ID:      documentID,
 		Message: "Document created successfully",
 	}
 
@@ -80,6 +85,7 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	documents, err := h.documentService.GetDocument(userID, documentID)
+	log.Println("Get Document Error: ", err)
 	if err != nil {
 		utils.GetErrorResponse("Internal Server Error", err.Error(), w, http.StatusInternalServerError)
 		return
@@ -141,4 +147,33 @@ func (h *DocumentHandler) RemoveCollaborator(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *DocumentHandler) SearchUserForDocument(w http.ResponseWriter, r *http.Request) {
+	documentID := chi.URLParam(r, "documentID")
+	query := r.URL.Query().Get("query")
+	limit := r.URL.Query().Get("limit")
+	if limit == "" {
+		limit = "3"
+	}
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil {
+		utils.GetErrorResponse("Bad Request", err.Error(), w, http.StatusBadRequest)
+		return
+	}
+
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		utils.GetErrorResponse("Unauthorized", "Unauthorized", w, http.StatusUnauthorized)
+		return
+	}
+
+	users, err := h.documentService.SearchUserForDocument(query, limitInt, documentID, userID)
+	if err != nil {
+		utils.GetErrorResponse("Internal Server Error", err.Error(), w, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(users)
 }

@@ -10,6 +10,7 @@ type CreateDocumentRequest struct {
 }
 
 type CreateDocumentResponse struct {
+	ID      string `json:"id"`
 	Message string `json:"message"`
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go-docs/cmd/server"
+	"go-docs/cmd/services"
 	"log"
 	"net/http"
 
@@ -15,7 +16,11 @@ func main() {
 
 	db := InitDB()
 	redis := InitRedis()
-	r := server.StartRestServer(db, redis)
+
+	userSearchTrie := services.PushUsersToTrie(db)
+	log.Printf("Loaded users into search trie users")
+
+	r := server.StartRestServer(db, redis, userSearchTrie)
 
 	sqlDB, err := db.DB()
 	if err != nil {

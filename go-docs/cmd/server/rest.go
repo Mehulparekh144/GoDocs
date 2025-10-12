@@ -13,11 +13,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func StartRestServer(db *gorm.DB, redis *redis.Client) *chi.Mux {
+func StartRestServer(db *gorm.DB, redis *redis.Client, userSearchTrie *services.UserSearchService) *chi.Mux {
 	r := chi.NewRouter()
 	validator := validator.NewValidator()
-	documentService := services.NewDocumentService(db, redis)
-	userService := services.NewUserService(db)
+	documentService := services.NewDocumentService(db, redis, userSearchTrie)
+	userService := services.NewUserService(db, userSearchTrie)
 	userHandler := handler.NewUserHandler(userService, validator)
 	documentHandler := handler.NewDocumentHandler(documentService, validator)
 	socketHandler := handler.NewSocketHandler()
@@ -52,6 +52,7 @@ func StartRestServer(db *gorm.DB, redis *redis.Client) *chi.Mux {
 				r.Post("/{documentID}", documentHandler.AddCollaborator)
 				r.Get("/{documentID}", documentHandler.GetCollaborators)
 				r.Delete("/{documentID}", documentHandler.RemoveCollaborator)
+				r.Get("/search/{documentID}", documentHandler.SearchUserForDocument)
 			})
 		})
 		r.Get("/test-ws", socketHandler.ServeTestWS)

@@ -11,8 +11,22 @@ import {
   Table,
   UnderlineIcon,
 } from "lucide-react";
+import { useEffect } from "react";
+import { type CreateDocumentRequest } from "@/app/types";
 
-export const Editor = ({ content }: { content: string }) => {
+interface EditorProps {
+  documentContent: CreateDocumentRequest;
+  documentID: string;
+  setDocumentContent: (documentContent: CreateDocumentRequest) => void;
+  handleAutoSave: (nextContent: CreateDocumentRequest) => void;
+}
+
+export const Editor = ({
+  documentContent,
+  documentID,
+  handleAutoSave,
+  setDocumentContent,
+}: EditorProps) => {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -36,9 +50,27 @@ export const Editor = ({ content }: { content: string }) => {
           "prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-full px-4 py-3 prose-p:my-2 prose-headings:my-4",
       },
     },
-    content: content || "",
+    content: "",
     immediatelyRender: false,
+    onUpdate: ({ editor }) => {
+      const nextContent = {
+        ...documentContent,
+        content: editor.getHTML(),
+      };
+      setDocumentContent(nextContent);
+      handleAutoSave(nextContent);
+    },
   });
+
+  useEffect(() => {
+    if (editor && documentID !== "new") {
+      editor.commands.setContent(documentContent.content, {
+        parseOptions: {
+          preserveWhitespace: "full",
+        },
+      });
+    }
+  }, [editor, documentContent.content, documentID]);
 
   return (
     <div className="h-full w-full px-4">
