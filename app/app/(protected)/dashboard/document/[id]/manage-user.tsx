@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Lock, Plus, Trash, User as UserIcon } from "lucide-react";
+import { Plus, Trash, User as UserIcon } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -33,9 +26,12 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { CommandDialog } from "@/components/ui/command";
 
 interface ManageUserProps {
   documentID: string;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   collaborators: Collaborator[];
   refetch: () => void;
 }
@@ -66,6 +62,8 @@ const removeCollaborator = async (documentID: string, userID: string) => {
 
 export const ManageUser = ({
   documentID,
+  isOpen,
+  onOpenChange,
   collaborators,
   refetch,
 }: ManageUserProps) => {
@@ -120,192 +118,181 @@ export const ManageUser = ({
   });
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button size={"sm"} variant={"outline"}>
-          <Lock />
-          Manage Access
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Manage Access</DialogTitle>
-        </DialogHeader>
-        <Command shouldFilter={false} className="rounded-lg border">
-          <CommandInput
-            placeholder="Search users by email..."
-            value={search}
-            onValueChange={setSearch}
-          />
-          <CommandList>
-            {!search.trim() && (
-              <CommandGroup heading="Collaborators">
-                {collaborators.map((collaborator) => (
+    <CommandDialog open={isOpen} onOpenChange={onOpenChange}>
+      <Command shouldFilter={false} className="rounded-lg border">
+        <CommandInput
+          placeholder="Search users by email..."
+          value={search}
+          onValueChange={setSearch}
+        />
+        <CommandList>
+          {!search.trim() && (
+            <CommandGroup heading="Collaborators">
+              {collaborators.map((collaborator) => (
+                <CommandItem
+                  key={collaborator.userID}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarFallback>
+                        {collaborator.user.name.charAt(0) ?? "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-2 font-medium">
+                        {collaborator.user.name}
+                        <Badge variant={"secondary"}>
+                          {collaborator.access.toUpperCase()}
+                        </Badge>
+                      </span>
+                      <span className="text-muted-foreground text-sm">
+                        {collaborator.user.email}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    size={"icon"}
+                    variant={"destructive"}
+                    disabled={removingUserId === collaborator.userID}
+                    onClick={() =>
+                      removeCollaboratorMutation({
+                        userID: collaborator.userID,
+                      })
+                    }
+                  >
+                    {removingUserId === collaborator.userID ? (
+                      <Spinner className="h-4 w-4" />
+                    ) : (
+                      <Trash />
+                    )}
+                  </Button>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+
+          {search.trim() && isFetching && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Spinner className="mb-3 h-8 w-8" />
+              <p className="text-muted-foreground text-sm">
+                Searching users...
+              </p>
+            </div>
+          )}
+
+          {search.trim() && !isFetching && users && users.length > 0 && (
+            <CommandGroup heading="Users">
+              {users.map((user) => {
+                const isCollaborator = collaborators?.find(
+                  (collaborator) => collaborator.userID === user.id,
+                );
+                return (
                   <CommandItem
-                    key={collaborator.userID}
+                    key={user.id}
                     className="flex items-center justify-between gap-3 px-4 py-3"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar>
                         <AvatarFallback>
-                          {collaborator.user.name.charAt(0) ?? "U"}
+                          {user.name.charAt(0) ?? "U"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="flex items-center gap-2 font-medium">
-                          {collaborator.user.name}
-                          <Badge variant={"secondary"}>
-                            {collaborator.access.toUpperCase()}
-                          </Badge>
+                          {user.name}
+
+                          {isCollaborator && (
+                            <Badge variant={"secondary"}>
+                              {isCollaborator.access.toUpperCase()}
+                            </Badge>
+                          )}
                         </span>
                         <span className="text-muted-foreground text-sm">
-                          {collaborator.user.email}
+                          {user.email}
                         </span>
                       </div>
                     </div>
-                    <Button
-                      size={"icon"}
-                      variant={"destructive"}
-                      disabled={removingUserId === collaborator.userID}
-                      onClick={() =>
-                        removeCollaboratorMutation({
-                          userID: collaborator.userID,
-                        })
-                      }
-                    >
-                      {removingUserId === collaborator.userID ? (
-                        <Spinner className="h-4 w-4" />
-                      ) : (
-                        <Trash />
-                      )}
-                    </Button>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-
-            {search.trim() && isFetching && (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Spinner className="mb-3 h-8 w-8" />
-                <p className="text-muted-foreground text-sm">
-                  Searching users...
-                </p>
-              </div>
-            )}
-
-            {search.trim() && !isFetching && users && users.length > 0 && (
-              <CommandGroup heading="Users">
-                {users.map((user) => {
-                  const isCollaborator = collaborators?.find(
-                    (collaborator) => collaborator.userID === user.id,
-                  );
-                  return (
-                    <CommandItem
-                      key={user.id}
-                      className="flex items-center justify-between gap-3 px-4 py-3"
-                    >
+                    {isCollaborator ? (
+                      <Button
+                        size={"icon"}
+                        disabled={removingUserId === user.id}
+                        onClick={() =>
+                          removeCollaboratorMutation({
+                            userID: user.id,
+                          })
+                        }
+                        variant={"destructive"}
+                      >
+                        {removingUserId === user.id ? (
+                          <Spinner className="h-4 w-4" />
+                        ) : (
+                          <Trash />
+                        )}
+                      </Button>
+                    ) : (
                       <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback>
-                            {user.name.charAt(0) ?? "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="flex items-center gap-2 font-medium">
-                            {user.name}
-
-                            {isCollaborator && (
-                              <Badge variant={"secondary"}>
-                                {isCollaborator.access.toUpperCase()}
-                              </Badge>
-                            )}
-                          </span>
-                          <span className="text-muted-foreground text-sm">
-                            {user.email}
-                          </span>
-                        </div>
-                      </div>
-                      {isCollaborator ? (
+                        <Select
+                          value={userAccess[user.id] || "read"}
+                          onValueChange={(value) =>
+                            setUserAccess((prev) => ({
+                              ...prev,
+                              [user.id]: value as AccessLevel,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="read">Read</SelectItem>
+                            <SelectItem value="write">Write</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <Button
                           size={"icon"}
-                          disabled={removingUserId === user.id}
+                          variant={"secondary"}
+                          disabled={addingUserId === user.id}
                           onClick={() =>
-                            removeCollaboratorMutation({
+                            addCollaboratorMutation({
                               userID: user.id,
+                              access: userAccess[user.id] || "read",
                             })
                           }
-                          variant={"destructive"}
                         >
-                          {removingUserId === user.id ? (
+                          {addingUserId === user.id ? (
                             <Spinner className="h-4 w-4" />
                           ) : (
-                            <Trash />
+                            <Plus />
                           )}
                         </Button>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <Select
-                            value={userAccess[user.id] || "read"}
-                            onValueChange={(value) =>
-                              setUserAccess((prev) => ({
-                                ...prev,
-                                [user.id]: value as AccessLevel,
-                              }))
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="read">Read</SelectItem>
-                              <SelectItem value="write">Write</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            size={"icon"}
-                            variant={"secondary"}
-                            disabled={addingUserId === user.id}
-                            onClick={() =>
-                              addCollaboratorMutation({
-                                userID: user.id,
-                                access: userAccess[user.id] || "read",
-                              })
-                            }
-                          >
-                            {addingUserId === user.id ? (
-                              <Spinner className="h-4 w-4" />
-                            ) : (
-                              <Plus />
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            )}
+                      </div>
+                    )}
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          )}
 
-            {/* Not found state */}
-            {search.trim() &&
-              !isFetching &&
-              isSuccess &&
-              (!users || users.length === 0) && (
-                <CommandEmpty>
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <div className="bg-muted mb-3 rounded-full p-3">
-                      <UserIcon className="text-muted-foreground/50 h-8 w-8" />
-                    </div>
-                    <p className="font-medium">No users found</p>
-                    <p className="text-muted-foreground text-xs">
-                      Try searching with a different email
-                    </p>
+          {/* Not found state */}
+          {search.trim() &&
+            !isFetching &&
+            isSuccess &&
+            (!users || users.length === 0) && (
+              <CommandEmpty>
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="bg-muted mb-3 rounded-full p-3">
+                    <UserIcon className="text-muted-foreground/50 h-8 w-8" />
                   </div>
-                </CommandEmpty>
-              )}
-          </CommandList>
-        </Command>
-      </DialogContent>
-    </Dialog>
+                  <p className="font-medium">No users found</p>
+                  <p className="text-muted-foreground text-xs">
+                    Try searching with a different email
+                  </p>
+                </div>
+              </CommandEmpty>
+            )}
+        </CommandList>
+      </Command>
+    </CommandDialog>
   );
 };

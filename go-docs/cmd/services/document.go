@@ -69,7 +69,7 @@ func (s *DocumentService) CreateDocument(title, content, documentID, authorID st
 
 func (s *DocumentService) GetDocuments(authorID string) ([]models.Document, error) {
 	document := []models.Document{}
-	result := s.db.Preload("Author").Preload("Collaborator").Where("author_id = ?", authorID).Find(&document)
+	result := s.db.Preload("Author").Preload("Collaborator").Where("author_id = ?", authorID).Order("updated_at DESC").Find(&document)
 
 	if result.Error != nil {
 		return nil, result.Error

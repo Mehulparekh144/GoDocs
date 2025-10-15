@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { axiosClient } from "@/lib/axios-client";
+import { formatRelativeDate } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Archive, EllipsisVertical, Trash } from "lucide-react";
 import Link from "next/link";
@@ -39,43 +40,48 @@ export const MyDocuments = () => {
 
 const DocumentCard = ({ document }: { document: Document }) => {
   return (
-    <Card className="group bg-card h-[400px] w-[300px] overflow-hidden border-0 transition-all hover:shadow-md">
+    <Card className="group bg-card h-[400px] w-[250px] overflow-hidden border-0 p-0 transition-all hover:shadow-md">
       <Link
         href={`/dashboard/document/${document.id}`}
         className="block h-full"
       >
         <CardContent className="h-[calc(100%-60px)] p-0">
           <A4DocumentPreview content={document.content} />
-        </CardContent>
-        <CardFooter className="flex justify-center border-t">
-          <div className="flex h-full w-full items-center justify-between">
-            <p className="text-foreground truncate text-center text-sm font-medium">
-              {document.title}
-            </p>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <EllipsisVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Archive className="mr-2 h-4 w-4" />
-                  Archive
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                  <Trash className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex justify-center border-t px-3 py-2">
+            <div className="flex h-full w-full items-center justify-between">
+              <div className="flex flex-col items-start justify-center">
+                <p className="text-foreground truncate text-center text-sm font-medium">
+                  {document.title}
+                </p>
+                <p className="text-muted-foreground truncate text-center text-xs font-medium">
+                  Updated {formatRelativeDate(document.updated_at)}
+                </p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <EllipsisVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>
+                    <Archive className="mr-2 h-4 w-4" />
+                    Archive
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive focus:text-destructive">
+                    <Trash className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </CardFooter>
+        </CardContent>
       </Link>
     </Card>
   );

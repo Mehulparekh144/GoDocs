@@ -47,7 +47,7 @@ export const Editor = ({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm sm:prose-base mx-auto focus:outline-none prose-p:my-2 prose-headings:my-4 w-[794px] min-h-[1123px] p-[2cm] bg-secondary/50 rounded-lg border",
+          "prose prose-sm sm:prose-base mx-auto focus:outline-none prose-p:my-2 prose-headings:my-4 w-full max-w-[794px] aspect-[794/1123] p-4 sm:p-6 md:p-8 lg:p-[2cm] bg-secondary/50 rounded-lg border",
       },
     },
     content: "",

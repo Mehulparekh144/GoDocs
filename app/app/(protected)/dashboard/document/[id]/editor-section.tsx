@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ManageUser } from "./manage-user";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { ArrowLeft, Share } from "lucide-react";
+import { ArrowLeft, EllipsisVertical, Lock, Share } from "lucide-react";
 import { Download } from "lucide-react";
 import { Editor } from "./editor";
 import { axiosClient } from "@/lib/axios-client";
@@ -20,6 +20,12 @@ import { formatDate, formatRelativeDate } from "@/lib/utils";
 import { type AxiosResponse } from "axios";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface EditorSectionProps {
   id: string;
@@ -43,6 +49,7 @@ export const EditorSection = ({ id }: EditorSectionProps) => {
     },
   );
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
   const lastSavedContent = useRef(documentContent.content);
   const lastSavedTitle = useRef(documentContent.title);
 
@@ -144,44 +151,78 @@ export const EditorSection = ({ id }: EditorSectionProps) => {
               <span className="sr-only">Back to dashboard</span>
             </Link>
           </Button>
-          <Input
-            className="w-max border-none! bg-transparent! text-2xl! font-bold"
-            value={documentContent.title}
-            onChange={(e) => {
-              const nextDoc = { ...documentContent, title: e.target.value };
-              setDocumentContent(nextDoc);
-              handleAutoSave(nextDoc);
-            }}
-          />
-          {updateDocument.isPending ? (
-            <Spinner />
-          ) : (
-            <p
-              className="text-muted-foreground font-mono text-sm"
-              title={formatDate(lastUpdated)}
-            >
-              Last updated: {formatRelativeDate(lastUpdated)}
-            </p>
-          )}
+          <div className="flex flex-col items-start space-y-2">
+            <Input
+              className="w-max border-none! bg-transparent! text-2xl! font-bold"
+              value={documentContent.title}
+              onChange={(e) => {
+                const nextDoc = { ...documentContent, title: e.target.value };
+                setDocumentContent(nextDoc);
+                handleAutoSave(nextDoc);
+              }}
+            />
+            {id !== "new" &&
+              (updateDocument.isPending ? (
+                <Spinner />
+              ) : (
+                <p
+                  className="text-muted-foreground ml-2 font-mono text-sm"
+                  title={formatDate(lastUpdated)}
+                >
+                  Last updated: {formatRelativeDate(lastUpdated)}
+                </p>
+              ))}
+          </div>
         </div>
         {id !== "new" && (
-          <div className="flex items-center gap-2">
-            <ButtonGroup>
-              <Button size={"sm"} variant={"outline"}>
-                <Share /> Share
-              </Button>
-              <ManageUser
-                documentID={id}
-                collaborators={collaborators ?? []}
-                refetch={refetchCollaborators}
-              />
-              <Button size={"sm"}>
-                <Download />
-                Download
-              </Button>
-            </ButtonGroup>
-          </div>
+          <>
+            <div className="block md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant={"outline"}>
+                    <EllipsisVertical />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem>
+                    <Share /> Share
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsManageAccessOpen(true)}>
+                    <Lock /> Manage Access
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Download /> Download
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="hidden w-max items-center gap-2 md:flex">
+              <ButtonGroup>
+                <Button variant={"outline"}>
+                  <Share /> Share
+                </Button>
+                <Button
+                  variant={"outline"}
+                  onClick={() => setIsManageAccessOpen(true)}
+                >
+                  <Lock />
+                  Manage Access
+                </Button>
+                <Button>
+                  <Download />
+                  Download
+                </Button>
+              </ButtonGroup>
+            </div>
+          </>
         )}
+        <ManageUser
+          isOpen={isManageAccessOpen}
+          onOpenChange={setIsManageAccessOpen}
+          documentID={id}
+          collaborators={collaborators ?? []}
+          refetch={refetchCollaborators}
+        />
       </section>
       <Editor
         documentContent={documentContent}
