@@ -8,7 +8,6 @@ import (
 	"go-docs/cmd/server/dto"
 	"go-docs/cmd/utils"
 	"log"
-	"slices"
 	"sync"
 	"time"
 
@@ -70,7 +69,7 @@ func (s *DocumentService) CreateDocument(title, content, documentID, authorID st
 
 func (s *DocumentService) GetDocuments(authorID string) ([]models.Document, error) {
 	document := []models.Document{}
-	result := s.db.Where("author_id = ?", authorID).Find(&document)
+	result := s.db.Preload("Author").Preload("Collaborator").Where("author_id = ?", authorID).Find(&document)
 
 	if result.Error != nil {
 		return nil, result.Error
@@ -143,15 +142,24 @@ func (s *DocumentService) AddCollaborator(documentID, userID string, accessLevel
 }
 
 func (s *DocumentService) GetCollaborators(documentID string) ([]dto.GetCollaboratorsResponse, error) {
-	collaborators := []dto.GetCollaboratorsResponse{}
+	collaborators := []models.DocumentCollaborator{}
 
-	result := s.db.Table("document_collaborators").Select("user_id, access").Where("document_id = ?", documentID).Scan(&collaborators)
+	result := s.db.Preload("User").Select("user, user_id, access").Where("document_id = ?", documentID).Find(&collaborators)
 
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
-	return collaborators, nil
+	collaboratorsResponse := []dto.GetCollaboratorsResponse{}
+	for _, collaborator := range collaborators {
+		collaboratorsResponse = append(collaboratorsResponse, dto.GetCollaboratorsResponse{
+			UserID: collaborator.UserID.String(),
+			User:   collaborator.User,
+			Access: collaborator.Access,
+		})
+	}
+
+	return collaboratorsResponse, nil
 }
 
 func (s *DocumentService) RemoveCollaborator(documentID, userID, authorID string) error {
@@ -360,15 +368,10 @@ func (s *DocumentService) SearchUserForDocument(query string, limit int, documen
 		return users, errors.New("you are not authorized to search users for this document")
 	}
 
-	collaborators := []uuid.UUID{}
-	s.db.Where("document_id = ?", documentID).Pluck("user_id", &collaborators)
-	collaborators = append(collaborators, document.AuthorID, parsedUserID)
-
 	userIDs := s.userSearchTrie.SearchUsers(query, limit)
 
 	for _, userID := range userIDs {
-
-		if slices.Contains(collaborators, userID) {
+		if userID == parsedUserID {
 			continue
 		}
 

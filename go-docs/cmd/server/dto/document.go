@@ -21,6 +21,7 @@ type AddCollaboratorRequest struct {
 
 type GetCollaboratorsResponse struct {
 	UserID string             `json:"userID"`
+	User   models.User        `json:"user"`
 	Access models.AccessLevel `json:"access"`
 }
 type RemoveCollaboratorRequest struct {

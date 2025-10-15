@@ -12,6 +12,7 @@ import {
   type CreateDocumentResponse,
   type CreateDocumentRequest,
   type Document,
+  type Collaborator,
 } from "@/app/types";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -23,6 +24,11 @@ import { Spinner } from "@/components/ui/spinner";
 interface EditorSectionProps {
   id: string;
 }
+
+const getCollaborators = async (documentID: string) => {
+  const response = await axiosClient.get(`/document/colab/${documentID}`);
+  return response.data as Collaborator[];
+};
 
 export const EditorSection = ({ id }: EditorSectionProps) => {
   const getDocument = async (id: string) => {
@@ -122,6 +128,12 @@ export const EditorSection = ({ id }: EditorSectionProps) => {
     setSaveTimer(timer);
   };
 
+  const { data: collaborators, refetch: refetchCollaborators } = useQuery({
+    enabled: !!id,
+    queryKey: ["collaborators", id],
+    queryFn: () => getCollaborators(id),
+  });
+
   return (
     <div className="h-screen w-full">
       <section className="flex h-max w-full items-center justify-between border-b px-4 py-2">
@@ -158,7 +170,11 @@ export const EditorSection = ({ id }: EditorSectionProps) => {
               <Button size={"sm"} variant={"outline"}>
                 <Share /> Share
               </Button>
-              <ManageUser documentID={id} />
+              <ManageUser
+                documentID={id}
+                collaborators={collaborators ?? []}
+                refetch={refetchCollaborators}
+              />
               <Button size={"sm"}>
                 <Download />
                 Download

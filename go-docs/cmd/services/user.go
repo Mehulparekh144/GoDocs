@@ -61,6 +61,11 @@ func (s *UserService) RegisterUser(name, email, password string) error {
 		return err
 	}
 
+	s.userSearchTrie.AddUser(models.UserRecord{
+		UserID: user.ID,
+		Email:  user.Email,
+	})
+
 	return nil
 }
 

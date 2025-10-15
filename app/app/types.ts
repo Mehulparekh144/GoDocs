@@ -19,6 +19,7 @@ export type User = {
 export type Collaborator = {
   id: string;
   userID: string;
+  user: User;
   access: AccessLevel;
 };
 

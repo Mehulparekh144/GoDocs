@@ -47,7 +47,7 @@ export const Editor = ({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-full px-4 py-3 prose-p:my-2 prose-headings:my-4",
+          "prose prose-sm sm:prose-base mx-auto focus:outline-none prose-p:my-2 prose-headings:my-4 w-[794px] min-h-[1123px] p-[2cm] bg-secondary/50 rounded-lg border",
       },
     },
     content: "",
@@ -100,8 +100,8 @@ export const Editor = ({
           </Button>
         </ButtonGroup>
       </div>
-      <div className="bg-secondary/50 h-full w-full rounded-lg border p-4">
-        <EditorContent editor={editor} style={{ minHeight: "400px" }} />
+      <div className="h-full w-full origin-top scale-[1]">
+        <EditorContent editor={editor} />
       </div>
     </div>
   );
